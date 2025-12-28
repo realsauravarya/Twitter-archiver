@@ -11,16 +11,6 @@ from datetime import datetime
 # CONFIG
 # ===========================
 
-HAR_FILE = "dump.har"
-USERNAME = "xbellebx"
-
-ROOT = os.path.join("archive", USERNAME)
-OUT = os.path.join(ROOT, "tweets_md")
-MEDIA_ROOT = os.path.join(ROOT, "media")
-RAW = os.path.join(ROOT, "raw")
-
-for p in [ROOT, OUT, MEDIA_ROOT, RAW]:
-    os.makedirs(p, exist_ok=True)
 
 
 # ===========================
@@ -93,7 +83,7 @@ def download_video(url, folder, name):
 # SAVE MEDIA + MD
 # ===========================
 
-def save_media(tweet):
+def save_media(MEDIA_ROOT, tweet):
     media = tweet.get("media", [])
     if not media:
         return None
@@ -146,7 +136,7 @@ def save_media(tweet):
 # SAVE TWEET MD (RAW ALWAYS SAVED)
 # ===========================
 
-def save_tweet_md(tweet):
+def save_tweet_md(RAW, OUT, MEDIA_ROOT, tweet):
     tid = tweet["id"]
 
     # Always save RAW JSON
@@ -162,6 +152,7 @@ def save_tweet_md(tweet):
         dt = datetime.strptime(raw_time, "%a %b %d %H:%M:%S %z %Y")
         safe_timestamp = dt.strftime("%Y%m%d_%H%M%S")
     except:
+        print(raw_time)
         pass
 
     filename = f"{safe_timestamp}_{tid}.md"
@@ -174,7 +165,7 @@ def save_tweet_md(tweet):
     text = tweet.get("text", "")
     created = tweet.get("createdAt", "")
     url = tweet.get("url", "")
-    media_md = save_media(tweet) or "No media"
+    media_md = save_media(MEDIA_ROOT, tweet) or "No media"
 
     md = f"""# Tweet {tid}
 
@@ -299,7 +290,7 @@ def load_blobs_from_har(file):
 # TIMELINE GENERATOR (PROFESSIONAL FEED)
 # ===========================
 
-def generate_timeline():
+def generate_timeline(USERNAME, ROOT, OUT, MEDIA_ROOT, RAW):
     TIMELINE = os.path.join(ROOT, "timeline.md")
     print("\nGenerating timeline...")
 
@@ -366,32 +357,3 @@ def generate_timeline():
             f.write("---\n\n")
 
     print("Timeline generated at:", TIMELINE)
-
-
-# ===========================
-# MAIN
-# ===========================
-
-if __name__ == "__main__":
-    print("\nLoading HAR file...")
-    blobs = load_blobs_from_har(HAR_FILE)
-
-    all_tweets = []
-    for blob in blobs:
-        all_tweets.extend(extract_from_blob(blob))
-
-    seen = set()
-    uniq = []
-    for t in all_tweets:
-        if t["id"] not in seen:
-            seen.add(t["id"])
-            uniq.append(t)
-
-    print(f"Found {len(uniq)} unique tweets\n")
-
-    for tw in uniq:
-        save_tweet_md(tw)
-
-    generate_timeline()
-
-    print("\nDONE\n")

@@ -12,14 +12,15 @@ from datetime import datetime
 # ===========================
 
 
-
 # ===========================
 # MEDIA DOWNLOAD
 # ===========================
 
+
 def pick_best_mp4(variants):
     mp4s = [
-        v for v in variants
+        v
+        for v in variants
         if v.get("content_type") == "video/mp4" and v.get("bitrate") is not None
     ]
     if not mp4s:
@@ -60,14 +61,17 @@ def download_video(url, folder, name):
                 "--quiet",
                 "--no-progress",
                 "--ignore-errors",
-                "--socket-timeout", "10",
-                "--retries", "2",
-                "-o", out,
-                url
+                "--socket-timeout",
+                "10",
+                "--retries",
+                "2",
+                "-o",
+                out,
+                url,
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            timeout=25
+            timeout=25,
         )
     except subprocess.TimeoutExpired:
         print(f"[WARN] yt-dlp timeout for: {url}")
@@ -82,6 +86,7 @@ def download_video(url, folder, name):
 # ===========================
 # SAVE MEDIA + MD
 # ===========================
+
 
 def save_media(MEDIA_ROOT, tweet):
     media = tweet.get("media", [])
@@ -136,11 +141,12 @@ def save_media(MEDIA_ROOT, tweet):
 # SAVE TWEET MD (RAW ALWAYS SAVED)
 # ===========================
 
-def save_tweet_md(RAW, OUT, MEDIA_ROOT, tweet):
+
+def save_tweet_md(raw, out, media_root, tweet):
     tid = tweet["id"]
 
     # Always save RAW JSON
-    raw_path = os.path.join(RAW, f"{tid}.json")
+    raw_path = os.path.join(raw, f"{tid}.json")
     with open(raw_path, "w", encoding="utf-8") as f:
         json.dump(tweet, f, indent=2)
 
@@ -151,12 +157,12 @@ def save_tweet_md(RAW, OUT, MEDIA_ROOT, tweet):
     try:
         dt = datetime.strptime(raw_time, "%a %b %d %H:%M:%S %z %Y")
         safe_timestamp = dt.strftime("%Y%m%d_%H%M%S")
-    except:
+    except ValueError:
         print(raw_time)
         pass
 
     filename = f"{safe_timestamp}_{tid}.md"
-    md_file = os.path.join(OUT, filename)
+    md_file = os.path.join(out, filename)
 
     # Only skip MD writing, not raw
     if os.path.exists(md_file):
@@ -165,7 +171,7 @@ def save_tweet_md(RAW, OUT, MEDIA_ROOT, tweet):
     text = tweet.get("text", "")
     created = tweet.get("createdAt", "")
     url = tweet.get("url", "")
-    media_md = save_media(MEDIA_ROOT, tweet) or "No media"
+    media_md = save_media(media_root, tweet) or "No media"
 
     md = f"""# Tweet {tid}
 
@@ -198,6 +204,7 @@ def save_tweet_md(RAW, OUT, MEDIA_ROOT, tweet):
 # TWEET PARSER
 # ===========================
 
+
 def parse_tweet_result(result):
     tid = result.get("rest_id")
     if not tid:
@@ -212,7 +219,7 @@ def parse_tweet_result(result):
         "text": legacy.get("full_text") or legacy.get("text", ""),
         "createdAt": legacy.get("created_at", ""),
         "url": f"https://x.com/i/web/status/{tid}",
-        "media": []
+        "media": [],
     }
 
     # Merge media arrays
@@ -228,9 +235,9 @@ def parse_tweet_result(result):
 # RECURSIVE EXTRACTION
 # ===========================
 
+
 def collect_tweets_recursively(obj, out):
     if isinstance(obj, dict):
-
         if obj.get("__typename") == "Tweet":
             t = parse_tweet_result(obj)
             if t:
@@ -259,6 +266,7 @@ def extract_from_blob(blob):
 # ===========================
 # LOAD HAR
 # ===========================
+
 
 def load_blobs_from_har(file):
     with open(file, "r", encoding="utf-8") as f:
@@ -292,18 +300,20 @@ def load_blobs_from_har(file):
 # TIMELINE GENERATOR (PROFESSIONAL FEED)
 # ===========================
 
-def generate_timeline(USERNAME, ROOT, OUT, MEDIA_ROOT, RAW):
-    TIMELINE = os.path.join(ROOT, "timeline.md")
+
+def generate_timeline(username, root, out, media_root):
+    TIMELINE = os.path.join(root, "timeline.md")
     print("\nGenerating timeline...")
 
     entries = []
 
-    for fname in os.listdir(OUT):
+    for fname in os.listdir(out):
         if not fname.endswith(".md"):
             continue
 
         parts = fname.split("_")
         if len(parts) < 3:
+            print(f"Skipping file with mal-formed timestamp: {fname}.")
             continue
 
         timestamp = f"{parts[0]}_{parts[1]}"
@@ -311,7 +321,7 @@ def generate_timeline(USERNAME, ROOT, OUT, MEDIA_ROOT, RAW):
 
         # extract preview
         preview = ""
-        with open(os.path.join(OUT, fname), "r", encoding="utf-8") as f:
+        with open(os.path.join(out, fname), "r", encoding="utf-8") as f:
             for line in f:
                 if (
                     line.strip()
@@ -327,11 +337,11 @@ def generate_timeline(USERNAME, ROOT, OUT, MEDIA_ROOT, RAW):
 
         # thumbnail
         thumb = ""
-        media_dir = os.path.join(MEDIA_ROOT, tid)
+        media_dir = os.path.join(media_root, tid)
         if os.path.isdir(media_dir):
             for file in os.listdir(media_dir):
                 if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                    thumb = f"![thumb](media/{tid}/{file})" 
+                    thumb = f"![thumb](media/{tid}/{file})"
                     break
 
         entries.append((timestamp, tid, fname, preview, thumb))
@@ -339,13 +349,10 @@ def generate_timeline(USERNAME, ROOT, OUT, MEDIA_ROOT, RAW):
     entries.sort(reverse=True)
 
     with open(TIMELINE, "w", encoding="utf-8") as f:
-        f.write(f"# 🗂️ @{USERNAME} Tweet Archive\n")
+        f.write(f"# 🗂️ @{username} Tweet Archive\n")
 
         for ts, tid, fname, preview, thumb in entries:
-            human = (
-                f"{ts[:4]}-{ts[4:6]}-{ts[6:8]} "
-                f"{ts[9:11]}:{ts[11:13]}:{ts[13:15]}"
-            )
+            human = f"{ts[:4]}-{ts[4:6]}-{ts[6:8]} {ts[9:11]}:{ts[11:13]}:{ts[13:15]}"
 
             f.write(f"## 🗂️ {human} — Tweet {tid}\n\n")
 

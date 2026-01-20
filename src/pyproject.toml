@@ -1,7 +1,10 @@
 [project]
 name = "twitter-archiver"
 version = "0.1.0"
-description = "Add your description here"
+description = "Tweet and associated medias archiver via HAR files from page load."
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "requests>=2",
+    "yt-dlp>=2025",
+]

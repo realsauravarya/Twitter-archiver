@@ -1,3 +1,4 @@
 archive/
 *.har
-main.py
+data/*
+__pycache__

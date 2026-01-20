@@ -16,9 +16,9 @@ This project extracts tweets from a Twitter/X HAR file, saves each tweet as Mark
 
 ## Folder structure
 
-The script writes into `archive/<USERNAME>/`:
+The script writes into `<OUT-DIR>/<USERNAME>/`:
 
-    archive/
+    <OUT-DIR>/
       USERNAME/
         raw/          # Raw tweet JSON files
         tweets_md/    # Markdown snapshots of each tweet
@@ -29,7 +29,7 @@ The script writes into `archive/<USERNAME>/`:
 
 Install dependencies with pip:
 
-    pip install -r requirements.txt
+    pip install src/
 
 The minimal required packages are:
 
@@ -48,7 +48,7 @@ Ensure your `.gitignore` excludes HAR files, for example:
 4. Save network traffic as `dump.har` in the project folder.
 5. Run the script:
 
-    python scrape_tweets.py
+    python main.py --input-har [har-file] --output-dir [out-dir]
 
 The script will parse the HAR, download media, produce Markdown files, and generate `timeline.md`.
 

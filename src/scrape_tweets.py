@@ -2,14 +2,8 @@ import os
 import json
 import subprocess
 import requests
-import time
 from urllib.parse import urlparse
 from datetime import datetime
-
-
-# ===========================
-# CONFIG
-# ===========================
 
 
 # ===========================
@@ -88,13 +82,13 @@ def download_video(url, folder, name):
 # ===========================
 
 
-def save_media(MEDIA_ROOT, tweet):
+def save_media(media_root, tweet):
     media = tweet.get("media", [])
     if not media:
         return None
 
     tid = tweet["id"]
-    folder = os.path.join(MEDIA_ROOT, tid)
+    folder = os.path.join(media_root, tid)
     os.makedirs(folder, exist_ok=True)
 
     md = ""
@@ -158,7 +152,7 @@ def save_tweet_md(raw, out, media_root, tweet):
         dt = datetime.strptime(raw_time, "%a %b %d %H:%M:%S %z %Y")
         safe_timestamp = dt.strftime("%Y%m%d_%H%M%S")
     except ValueError:
-        print(raw_time)
+        print(f"Failed to parse timestamp '{raw_time}'.")
         pass
 
     filename = f"{safe_timestamp}_{tid}.md"
@@ -302,7 +296,7 @@ def load_blobs_from_har(file):
 
 
 def generate_timeline(username, root, out, media_root):
-    TIMELINE = os.path.join(root, "timeline.md")
+    timeline = os.path.join(root, "timeline.md")
     print("\nGenerating timeline...")
 
     entries = []
@@ -348,7 +342,7 @@ def generate_timeline(username, root, out, media_root):
 
     entries.sort(reverse=True)
 
-    with open(TIMELINE, "w", encoding="utf-8") as f:
+    with open(timeline, "w", encoding="utf-8") as f:
         f.write(f"# 🗂️ @{username} Tweet Archive\n")
 
         for ts, tid, fname, preview, thumb in entries:
@@ -365,4 +359,4 @@ def generate_timeline(username, root, out, media_root):
             f.write(f"> 🔗 **Open full tweet:** [View Markdown](tweets_md/{fname})\n\n")
             f.write("---\n\n")
 
-    print("Timeline generated at:", TIMELINE)
+    print("Timeline generated at:", timeline)

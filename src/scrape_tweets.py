@@ -205,6 +205,8 @@ def parse_tweet_result(result):
 
     legacy = result.get("legacy", {})
 
+    print(legacy.get("full_text") or legacy.get("text", ""))
+
     tweet = {
         "id": tid,
         "text": legacy.get("full_text") or legacy.get("text", ""),

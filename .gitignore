@@ -2,3 +2,4 @@ archive/
 *.har
 data/*
 __pycache__
+src/uv.lock

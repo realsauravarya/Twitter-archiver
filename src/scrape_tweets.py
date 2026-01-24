@@ -136,6 +136,20 @@ def save_media(media_root, tweet):
 # ===========================
 
 
+def save_tweet_json(raw, out, media_root, tweet):
+    tid = tweet["id"]
+
+    # Don't write the md, but download the content
+    media_md = save_media(media_root, tweet) or "No media"
+
+    tweet["media"] = media_md
+
+    # Always save RAW JSON
+    raw_path = os.path.join(raw, f"{tid}.json")
+    with open(raw_path, "w", encoding="utf-8") as f:
+        json.dump(tweet, f, indent=2)
+
+
 def save_tweet_md(raw, out, media_root, tweet):
     tid = tweet["id"]
 
@@ -326,8 +340,8 @@ def generate_timeline(username, root, out, media_root):
                     preview = line.strip()
                     break
 
-        if len(preview) > 180:
-            preview = preview[:180] + "…"
+        # if len(preview) > 180:
+        #    preview = preview[:180] + "…"
 
         # thumbnail
         thumb = ""

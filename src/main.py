@@ -21,6 +21,12 @@ if __name__ == "__main__":
         help="The folder to store output.",
     )
     parser.add_argument(
+        "--format",
+        default="md",
+        type=str,
+        help="The file type for saving results.  Options are 'md' or 'json'.",
+    )
+    parser.add_argument(
         "--username",
         default="anonymous",
         type=str,
@@ -53,7 +59,10 @@ if __name__ == "__main__":
     print(f"Found {len(uniq)} unique tweets\n")
 
     for tw in uniq:
-        st.save_tweet_md(RAW, OUT, MEDIA_ROOT, tw)
+        if args.format == "md":
+            st.save_tweet_md(RAW, OUT, MEDIA_ROOT, tw)
+        else:
+            st.save_tweet_json(RAW, OUT, MEDIA_ROOT, tw)
 
     st.generate_timeline(args.username, ROOT, OUT, MEDIA_ROOT)
 

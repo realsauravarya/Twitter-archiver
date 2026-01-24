@@ -58,11 +58,12 @@ if __name__ == "__main__":
 
     print(f"Found {len(uniq)} unique tweets\n")
 
-    for tw in uniq:
-        if args.format == "md":
-            st.save_tweet_md(RAW, OUT, MEDIA_ROOT, tw)
-        else:
-            st.save_tweet_json(RAW, OUT, MEDIA_ROOT, tw)
+    if args.format == "json":
+        st.save_tweets_combined_json(RAW, OUT, MEDIA_ROOT, uniq)
+    else:
+        for tw in uniq:
+            if args.format == "md":
+                st.save_tweet_md(RAW, OUT, MEDIA_ROOT, tw)
 
     st.generate_timeline(args.username, ROOT, OUT, MEDIA_ROOT)
 

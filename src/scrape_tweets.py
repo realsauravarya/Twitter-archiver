@@ -1,6 +1,7 @@
 import os
 import json
 import subprocess
+from typing import Any
 import requests
 from urllib.parse import urlparse
 from datetime import datetime
@@ -82,16 +83,16 @@ def download_video(url, folder, name):
 # ===========================
 
 
-def save_media(media_root, tweet):
+def save_media(media_root, tweet) -> list[tuple[str, str]]:
     media = tweet.get("media", [])
     if not media:
-        return None
+        return []
 
     tid = tweet["id"]
     folder = os.path.join(media_root, tid)
     os.makedirs(folder, exist_ok=True)
 
-    md = ""
+    md: list[tuple[str, str]] = []
 
     for m in media:
         t = m.get("type")
@@ -103,7 +104,7 @@ def save_media(media_root, tweet):
                 local = download_image(url, folder)
                 if local:
                     rel = f"../media/{tid}/{os.path.basename(local)}"
-                    md += f"![image]({rel})\n"
+                    md.append(("image", rel))
             continue
 
         # GIF + VIDEO
@@ -117,7 +118,7 @@ def save_media(media_root, tweet):
 
                 if local:
                     rel = f"../media/{tid}/{os.path.basename(local)}"
-                    md += f'<video controls src="{rel}" style="max-width:100%;"></video>\n'
+                    md.append(("video", rel))
             continue
 
         # FALLBACK
@@ -126,9 +127,23 @@ def save_media(media_root, tweet):
             local = download_image(url, folder)
             if local:
                 rel = f"../media/{tid}/{os.path.basename(local)}"
-                md += f"![media]({rel})\n"
+                md.append(("media", rel))
 
-    return md or None
+    return md
+
+
+def format_media_md(medias: list[tuple[str, str]]) -> str:
+    return "\n".join(format_one_media_md(m, p) for m, p in medias) or "No Media"
+
+
+def format_one_media_md(m_type: str, rel: str) -> str:
+    match m_type:
+        case "image":
+            return f"![image]({rel})"
+        case "video":
+            return f'<video controls src="{rel}" style="max-width:100%;"></video>\n'
+        case _:
+            return f"![{m_type}]({rel})"
 
 
 # ===========================
@@ -139,10 +154,11 @@ def save_media(media_root, tweet):
 def save_tweet_json(raw, out, media_root, tweet):
     tid = tweet["id"]
 
-    # Don't write the md, but download the content
-    media_md = save_media(media_root, tweet) or "No media"
-
-    tweet["media"] = media_md
+    # Don't write the md, but download the content and store metadata in json
+    media_md = save_media(media_root, tweet)
+    for i, (m_type, m_url) in zip(range(len(tweet["media"])), media_md):
+        tweet["media"][i]["media_url_local"] = m_url
+        tweet["media"][i]["md_type"] = m_type
 
     # Always save RAW JSON
     raw_path = os.path.join(raw, f"{tid}.json")
@@ -179,7 +195,7 @@ def save_tweet_md(raw, out, media_root, tweet):
     text = tweet.get("text", "")
     created = tweet.get("createdAt", "")
     url = tweet.get("url", "")
-    media_md = save_media(media_root, tweet) or "No media"
+    media_md = format_media_md(save_media(media_root, tweet))
 
     md = f"""# Tweet {tid}
 
@@ -213,7 +229,7 @@ def save_tweet_md(raw, out, media_root, tweet):
 # ===========================
 
 
-def parse_tweet_result(result):
+def parse_tweet_result(result: dict[str, Any]):
     tid = result.get("rest_id")
     if not tid:
         return None

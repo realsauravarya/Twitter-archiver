@@ -255,11 +255,25 @@ def parse_tweet_result(result: dict[str, Any]):
 
     legacy = result.get("legacy", {})
 
-    print(legacy.get("full_text") or legacy.get("text", ""))
+    # Sometimes, the legacy value contains only a truncated version of the full text.
+    # In this case, we notice that note_tweet stores the full version, so we compare and replace
+    # if relevant.
+    note_result = (
+        result.get("note_tweet", {})
+        .get("note_tweet_results", {})
+        .get("result", {})
+        .get("text", "")
+    )
+
+    leg_text = legacy.get("full_text") or legacy.get("text", "")
+    text = leg_text
+    if note_result.startswith(leg_text):
+        print(f"Updating legacy text with note_tweet result for {tid}")
+        text = note_result
 
     tweet = {
         "id": tid,
-        "text": legacy.get("full_text") or legacy.get("text", ""),
+        "text": text,
         "createdAt": legacy.get("created_at", ""),
         "url": f"https://x.com/i/web/status/{tid}",
         "media": [],
@@ -334,7 +348,6 @@ def load_blobs_from_har(file):
             continue
 
         blobs.append(js)
-
     print(f"Loaded {len(blobs)} blobs containing tweet data from HAR")
     return blobs
 

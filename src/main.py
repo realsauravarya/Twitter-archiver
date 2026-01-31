@@ -1,6 +1,7 @@
 import scrape_tweets as st
 import os
 import argparse
+import json
 
 
 def main():
@@ -15,6 +16,11 @@ if __name__ == "__main__":
         "--input-har", type=str, help="Path to HAR file to be processed."
     )
     parser.add_argument(
+        "--input-json",
+        type=str,
+        help="Path to JSON file that has already been processed.",
+    )
+    parser.add_argument(
         "--output-dir",
         default="./archive",
         type=str,
@@ -24,7 +30,7 @@ if __name__ == "__main__":
         "--format",
         default="md",
         type=str,
-        help="The file type for saving results.  Options are 'md' or 'json'.",
+        help="The file type for saving results.  Options are 'md', 'html', or 'json'.",
     )
     parser.add_argument(
         "--username",
@@ -42,19 +48,24 @@ if __name__ == "__main__":
     for p in [ROOT, OUT, MEDIA_ROOT, RAW]:
         os.makedirs(p, exist_ok=True)
 
-    print("\nLoading HAR file...")
-    blobs = st.load_blobs_from_har(args.input_har)
+    if args.input_json:
+        print("\nLoading JSON file...")
+        with open(args.input_json, "r", encoding="utf-8") as f:
+            uniq = list(json.load(f).values())
+    else:
+        print("\nLoading HAR file...")
+        blobs = st.load_blobs_from_har(args.input_har)
 
-    all_tweets = []
-    for blob in blobs:
-        all_tweets.extend(st.extract_from_blob(blob))
+        all_tweets = []
+        for blob in blobs:
+            all_tweets.extend(st.extract_from_blob(blob))
 
-    seen = set()
-    uniq = []
-    for t in all_tweets:
-        if t["id"] not in seen:
-            seen.add(t["id"])
-            uniq.append(t)
+        seen = set()
+        uniq = []
+        for t in all_tweets:
+            if t["id"] not in seen:
+                seen.add(t["id"])
+                uniq.append(t)
 
     print(f"Found {len(uniq)} unique tweets\n")
 

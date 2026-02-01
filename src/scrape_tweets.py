@@ -275,12 +275,6 @@ def parse_tweet_result(result: dict[str, Any]):
     merged = {m.get("id_str"): m for m in ent1 + ent2 if isinstance(m, dict)}
     tweet["media"] = list(merged.values())
 
-    for m in tweet["media"]:
-        if "features" in m:
-            del m["features"]
-        if "original_info" in m:
-            del m["original_info"]
-
     return tweet
 
 

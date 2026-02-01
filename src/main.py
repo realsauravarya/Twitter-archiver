@@ -13,12 +13,7 @@ if __name__ == "__main__":
         description="Parse the tweets from this page load's HAR file."
     )
     parser.add_argument(
-        "--input-har", type=str, help="Path to HAR file to be processed."
-    )
-    parser.add_argument(
-        "--input-json",
-        type=str,
-        help="Path to JSON file that has already been processed.",
+        "--input", type=str, help="Path to HAR or JSON file to be processed."
     )
     parser.add_argument(
         "--output-dir",
@@ -47,13 +42,13 @@ if __name__ == "__main__":
     for p in [ROOT, MEDIA_ROOT, RAW]:
         os.makedirs(p, exist_ok=True)
 
-    if args.input_json:
+    if args.input.lower().endswith("json"):
         print("\nLoading JSON file...")
-        with open(args.input_json, "r", encoding="utf-8") as f:
+        with open(args.input, "r", encoding="utf-8") as f:
             uniq = list(json.load(f).values())
-    else:
+    elif args.input.lower().endswith("har"):
         print("\nLoading HAR file...")
-        blobs = st.load_blobs_from_har(args.input_har)
+        blobs = st.load_blobs_from_har(args.input)
 
         all_tweets = []
         for blob in blobs:
@@ -65,6 +60,8 @@ if __name__ == "__main__":
             if t["id"] not in seen:
                 seen.add(t["id"])
                 uniq.append(t)
+    else:
+        raise ValueError(f"{args.input} doesn't match expected types: HAR or JSON.")
 
     print(f"Found {len(uniq)} unique tweets\n")
 

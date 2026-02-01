@@ -2,6 +2,7 @@ import os
 import json
 import subprocess
 from typing import Any
+import re
 import requests
 from urllib.parse import urlparse
 from datetime import datetime
@@ -251,8 +252,12 @@ def parse_tweet_result(result: dict[str, Any]):
     )
 
     leg_text = legacy.get("full_text") or legacy.get("text", "")
+    # Sometimes twitter includes a shortened link to the tweet when it truncates the text,
+    # So we use a regex to remove it before comparing the prefixes.
+    leg_text = re.sub(r"https://t\.co/[a-zA-Z0-9]*", "", leg_text)
     text = leg_text
-    if note_result.startswith(leg_text) or note_result[:180] == leg_text[:180]:
+
+    if note_result.startswith(leg_text):
         print(f"Updating legacy text with note_tweet result for {tid}")
         text = note_result
 
@@ -269,6 +274,12 @@ def parse_tweet_result(result: dict[str, Any]):
     ent2 = legacy.get("extended_entities", {}).get("media", [])
     merged = {m.get("id_str"): m for m in ent1 + ent2 if isinstance(m, dict)}
     tweet["media"] = list(merged.values())
+
+    for m in tweet["media"]:
+        if "features" in m:
+            del m["features"]
+        if "original_info" in m:
+            del m["original_info"]
 
     return tweet
 

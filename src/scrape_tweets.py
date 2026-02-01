@@ -151,7 +151,7 @@ def format_one_media_md(m_type: str, rel: str) -> str:
 # ===========================
 
 
-def save_tweets_combined_json(raw, out, media_root, tweets):
+def save_tweets_combined_json(raw, media_root, tweets):
     final_json = dict()
     for tweet in tweets:
         tid = tweet["id"]

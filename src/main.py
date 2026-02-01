@@ -34,18 +34,17 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--username",
-        default="anonymous",
+        default="",
         type=str,
         help="Username to associate to the extracted data.",
     )
     args = parser.parse_args()
 
     ROOT = os.path.join(args.output_dir, args.username)
-    OUT = os.path.join(ROOT, "tweets_md")
     MEDIA_ROOT = os.path.join(ROOT, "media")
     RAW = os.path.join(ROOT, "raw")
 
-    for p in [ROOT, OUT, MEDIA_ROOT, RAW]:
+    for p in [ROOT, MEDIA_ROOT, RAW]:
         os.makedirs(p, exist_ok=True)
 
     if args.input_json:
@@ -70,12 +69,14 @@ if __name__ == "__main__":
     print(f"Found {len(uniq)} unique tweets\n")
 
     if args.format == "json":
-        st.save_tweets_combined_json(RAW, OUT, MEDIA_ROOT, uniq)
+        st.save_tweets_combined_json(RAW, MEDIA_ROOT, uniq)
     else:
+        OUT = os.path.join(ROOT, "tweets_md")
+        os.makedirs(OUT, exist_ok=True)
         for tw in uniq:
             if args.format == "md":
                 st.save_tweet_md(RAW, OUT, MEDIA_ROOT, tw)
 
-    st.generate_timeline(args.username, ROOT, OUT, MEDIA_ROOT)
+        st.generate_timeline(args.username, ROOT, OUT, MEDIA_ROOT)
 
     print("\nDONE\n")

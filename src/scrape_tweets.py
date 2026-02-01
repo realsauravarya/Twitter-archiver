@@ -252,7 +252,7 @@ def parse_tweet_result(result: dict[str, Any]):
 
     leg_text = legacy.get("full_text") or legacy.get("text", "")
     text = leg_text
-    if note_result.startswith(leg_text):
+    if note_result.startswith(leg_text) or note_result[:180] == leg_text[:180]:
         print(f"Updating legacy text with note_tweet result for {tid}")
         text = note_result
 

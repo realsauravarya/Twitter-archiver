@@ -1,6 +1,8 @@
 import os
 import json
 import subprocess
+from typing import Any
+import re
 import requests
 from urllib.parse import urlparse
 from datetime import datetime
@@ -82,16 +84,16 @@ def download_video(url, folder, name):
 # ===========================
 
 
-def save_media(media_root, tweet):
+def save_media(media_root, tweet) -> list[tuple[str, str]]:
     media = tweet.get("media", [])
     if not media:
-        return None
+        return []
 
     tid = tweet["id"]
     folder = os.path.join(media_root, tid)
     os.makedirs(folder, exist_ok=True)
 
-    md = ""
+    md: list[tuple[str, str]] = []
 
     for m in media:
         t = m.get("type")
@@ -103,7 +105,7 @@ def save_media(media_root, tweet):
                 local = download_image(url, folder)
                 if local:
                     rel = f"../media/{tid}/{os.path.basename(local)}"
-                    md += f"![image]({rel})\n"
+                    md.append(("image", rel))
             continue
 
         # GIF + VIDEO
@@ -117,7 +119,7 @@ def save_media(media_root, tweet):
 
                 if local:
                     rel = f"../media/{tid}/{os.path.basename(local)}"
-                    md += f'<video controls src="{rel}" style="max-width:100%;"></video>\n'
+                    md.append(("video", rel))
             continue
 
         # FALLBACK
@@ -126,9 +128,23 @@ def save_media(media_root, tweet):
             local = download_image(url, folder)
             if local:
                 rel = f"../media/{tid}/{os.path.basename(local)}"
-                md += f"![media]({rel})\n"
+                md.append(("media", rel))
 
-    return md or None
+    return md
+
+
+def format_media_md(medias: list[tuple[str, str]]) -> str:
+    return "\n".join(format_one_media_md(m, p) for m, p in medias) or "No Media"
+
+
+def format_one_media_md(m_type: str, rel: str) -> str:
+    match m_type:
+        case "image":
+            return f"![image]({rel})"
+        case "video":
+            return f'<video controls src="{rel}" style="max-width:100%;"></video>\n'
+        case _:
+            return f"![{m_type}]({rel})"
 
 
 # ===========================
@@ -136,7 +152,26 @@ def save_media(media_root, tweet):
 # ===========================
 
 
-def save_tweet_md(raw, out, media_root, tweet):
+def save_tweets_combined_json(raw, media_root, tweets):
+    final_json = dict()
+    for tweet in tweets:
+        tid = tweet["id"]
+
+        # Don't write the md, but download the content and store metadata in json
+        media_md = save_media(media_root, tweet)
+        for i, (m_type, m_url) in zip(range(len(tweet["media"])), media_md):
+            tweet["media"][i]["media_url_local"] = m_url
+            tweet["media"][i]["md_type"] = m_type
+
+        final_json[tid] = tweet
+
+    # Always save RAW JSON
+    raw_path = os.path.join(raw, "tweets.json")
+    with open(raw_path, "w", encoding="utf-8") as f:
+        json.dump(final_json, f, indent=2)
+
+
+def save_tweet_md(raw, out, media_root, tweet: dict[str, Any]):
     tid = tweet["id"]
 
     # Always save RAW JSON
@@ -165,7 +200,7 @@ def save_tweet_md(raw, out, media_root, tweet):
     text = tweet.get("text", "")
     created = tweet.get("createdAt", "")
     url = tweet.get("url", "")
-    media_md = save_media(media_root, tweet) or "No media"
+    media_md = format_media_md(save_media(media_root, tweet))
 
     md = f"""# Tweet {tid}
 
@@ -199,18 +234,36 @@ def save_tweet_md(raw, out, media_root, tweet):
 # ===========================
 
 
-def parse_tweet_result(result):
+def parse_tweet_result(result: dict[str, Any]):
     tid = result.get("rest_id")
     if not tid:
         return None
 
     legacy = result.get("legacy", {})
 
-    print(legacy.get("full_text") or legacy.get("text", ""))
+    # Sometimes, the legacy value contains only a truncated version of the full text.
+    # In this case, we notice that note_tweet stores the full version, so we compare and replace
+    # if relevant.
+    note_result = (
+        result.get("note_tweet", {})
+        .get("note_tweet_results", {})
+        .get("result", {})
+        .get("text", "")
+    )
+
+    leg_text = legacy.get("full_text") or legacy.get("text", "")
+    # Sometimes twitter includes a shortened link to the tweet when it truncates the text,
+    # So we use a regex to remove it before comparing the prefixes.
+    leg_text = re.sub(r"https://t\.co/[a-zA-Z0-9]*", "", leg_text)
+    text = leg_text
+
+    if note_result.startswith(leg_text):
+        print(f"Updating legacy text with note_tweet result for {tid}")
+        text = note_result
 
     tweet = {
         "id": tid,
-        "text": legacy.get("full_text") or legacy.get("text", ""),
+        "text": text,
         "createdAt": legacy.get("created_at", ""),
         "url": f"https://x.com/i/web/status/{tid}",
         "media": [],
@@ -285,7 +338,6 @@ def load_blobs_from_har(file):
             continue
 
         blobs.append(js)
-
     print(f"Loaded {len(blobs)} blobs containing tweet data from HAR")
     return blobs
 
